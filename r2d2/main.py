@@ -415,9 +415,23 @@ DANCE_NOTES = (1568, 2093, 1760, 2349, 1976, 2637, 2349, 3136)
 DANCE_WIGGLE_SPEED = 500
 
 
-def dance():
-    """Wiggle left/right to a little tune, head swinging, lights flashing."""
+def wheels_back_to(l0, r0, speed=800, timeout_ms=2500):
+    """Turn both wheels back to the given angles. Restoring both wheel angles
+    puts R2 back facing the same way he was (as long as the wheels didn't slip)."""
+    left.run_target(speed, l0, Stop.BRAKE, False)
+    right.run_target(speed, r0, Stop.BRAKE, False)
+    t = StopWatch()
+    while (abs(left.angle() - l0) > 5 or abs(right.angle() - r0) > 5) \
+            and t.time() < timeout_ms:
+        wait(10)
     stop_wheels()
+
+
+def dance():
+    """Wiggle left/right to a little tune, head swinging, lights flashing,
+    then twirl out and back so he ends up facing you again."""
+    stop_wheels()
+    l0, r0 = left.angle(), right.angle()      # remember where he faces
     for k, f in enumerate(DANCE_NOTES):
         d = 1 if k % 2 == 0 else -1
         left.run(d * DANCE_WIGGLE_SPEED)
@@ -425,13 +439,21 @@ def dance():
         head_look(-d * 0.8, HEAD_SPEED * 3)
         logic_all(k % 2 == 0)
         ev3.speaker.beep(f, 180)
-    # finale: quick spin with a happy warble
-    left.run(700)
-    right.run(-700)
+    # finale: twirl out with a happy warble, head swung the other way...
+    spin = 1 if randint(0, 1) else -1
+    left.run(spin * 700)
+    right.run(-spin * 700)
+    head_look(-spin * 0.9, HEAD_SPEED * 3)
     chirp()
+    # ...then twirl back to exactly where he started, with a rising whistle
+    left.run_target(900, l0, Stop.BRAKE, False)
+    right.run_target(900, r0, Stop.BRAKE, False)
+    head_look(spin * 0.9, HEAD_SPEED * 3)
     whistle_up()
-    stop_wheels()
+    wheels_back_to(l0, r0)                     # make sure he's all the way back
     head_look(0)
+    logic_all(True)                            # "ta-da!" flash
+    ev3.speaker.beep(3136, 250)
     draw_body()
 
 
